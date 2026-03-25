@@ -1,5 +1,46 @@
 <?php
 
+function psource_support_get_faq_category_table() {
+	return psource_support()->model->faq_cats_table;
+}
+
+function psource_support_get_faq_category_rows( $where, $order = '', $limit = '', $count = false ) {
+	global $wpdb;
+	$table = psource_support_get_faq_category_table();
+	if ( $count ) {
+		return $wpdb->get_var( "SELECT COUNT(cat_id) FROM $table $where" );
+	}
+	return $wpdb->get_results( "SELECT * FROM $table $where $order $limit" );
+}
+
+function psource_support_insert_faq_category_row( $insert ) {
+	global $wpdb;
+	$res = $wpdb->insert(
+		psource_support_get_faq_category_table(),
+		$insert,
+		array( '%s', '%d', '%d' )
+	);
+	return $res ? $wpdb->insert_id : false;
+}
+
+function psource_support_update_faq_category_row( $cat_id, $update, $wildcards ) {
+	global $wpdb;
+	return $wpdb->update(
+		psource_support_get_faq_category_table(),
+		$update,
+		array( 'cat_id' => $cat_id ),
+		$wildcards,
+		array( '%d' )
+	);
+}
+
+function psource_support_delete_faq_category_row( $cat_id ) {
+	global $wpdb;
+	return $wpdb->query(
+		$wpdb->prepare( "DELETE FROM " . psource_support_get_faq_category_table() . " WHERE cat_id = %d", $cat_id )
+	);
+}
+
 function psource_support_sanitize_faq_category_fields( $cat ) {
 	$int_fields = array( 'cat_id', 'user_id', 'site_id', 'qcount' );
 
@@ -38,7 +79,6 @@ function psource_support_get_faq_categories( $args = array() ) {
 	$args = wp_parse_args( $args, $defaults );
 	extract( $args );
 
-	$table = psource_support()->model->faq_cats_table;
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
 
 	// WHERE
@@ -64,24 +104,13 @@ function psource_support_get_faq_categories( $args = array() ) {
 		$limit = $wpdb->prepare( "LIMIT %d, %d", intval( ( $page - 1 ) * $per_page ), intval( $per_page ) );
 
 	if ( $count ) {
-		$query = "SELECT COUNT(cat_id) FROM $table $where";
-		$results = $wpdb->get_var( $query );
-		return $results;
+		return psource_support_get_faq_category_rows( $where, '', '', true );
 	}
-	else {
-		$query = "SELECT * FROM $table $where $order $limit";
-		$_cats = $wpdb->get_results( $query );
 
-		$cats = array();
-		foreach ( $_cats as $cat ) {
-			$cats[] = psource_support_get_faq_category( $cat );
-		}
-		
-		if ( empty( $cats ) )
-			$cats = array();
-
-
-		return $cats;
+	$_cats = psource_support_get_faq_category_rows( $where, $order, $limit );
+	$cats = array();
+	foreach ( $_cats as $cat ) {
+		$cats[] = psource_support_get_faq_category( $cat );
 	}
 
 	$cats = apply_filters( 'support_system_get_faq_categories', $cats, $args );
@@ -134,11 +163,9 @@ function psource_support_faq_categories_dropdown( $args = array() ) {
 }
 
 function psource_support_insert_faq_category( $name ) {
-	global $wpdb, $current_site;
+	global $current_site;
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
-
-	$faq_cats_table = psource_support()->model->faq_cats_table;
 
 	$name = trim( wp_unslash( $name ) );
 	if ( empty( $name ) )
@@ -148,20 +175,14 @@ function psource_support_insert_faq_category( $name ) {
 	if ( $faq_category )
 		return false;
 
-	$res = $wpdb->insert(
-		$faq_cats_table,
-		array( 
-			'cat_name' 	=> $name,
-			'site_id'	=> $current_site_id,
-			'qcount' 	=> 0
-		),
-		array( '%s', '%d', '%d' )
-	);
+	$cat_id = psource_support_insert_faq_category_row( array(
+		'cat_name' => $name,
+		'site_id'  => $current_site_id,
+		'qcount'   => 0,
+	) );
 
-	if ( ! $res )
+	if ( ! $cat_id )
 		return false;
-
-	$cat_id = $wpdb->insert_id;
 
 	do_action( 'support_system_insert_faq_category', $cat_id );
 
@@ -169,10 +190,6 @@ function psource_support_insert_faq_category( $name ) {
 }
 
 function psource_support_update_faq_category( $faq_category_id, $args = array() ) {
-	global $wpdb, $current_site;
-
-	$faq_cats_table = psource_support()->model->faq_cats_table;
-
 	$faq_category = psource_support_get_faq_category( $faq_category_id );
 	if ( ! $faq_category )
 		return false;
@@ -199,13 +216,7 @@ function psource_support_update_faq_category( $faq_category_id, $args = array() 
 	if ( $defcat )
 		psource_support_set_default_faq_category( $faq_category_id );
 
-	$result = $wpdb->update(
-		$faq_cats_table,
-		$update,
-		array( 'cat_id' => $faq_category_id ),
-		$update_wildcards,
-		array( '%d' )
-	);
+	$result = psource_support_update_faq_category_row( $faq_category_id, $update, $update_wildcards );
 
 	if ( ! $result )
 		return false;
@@ -239,21 +250,17 @@ function psource_support_get_default_faq_category() {
 function psource_support_set_default_faq_category( $faq_category_id ) {
 	global $wpdb;
 
-	$faq_cats_table = psource_support()->model->faq_cats_table;
-
 	$faq_category = psource_support_get_faq_category( $faq_category_id );
 	if ( ! $faq_category )
 		return false;
 
 	$default_category = psource_support_get_default_faq_category();
 	if ( $default_category )
-		$wpdb->query( "UPDATE $faq_cats_table SET defcat = 1" ); // enum type field!!
+		$wpdb->query( "UPDATE " . psource_support_get_faq_category_table() . " SET defcat = 1" ); // enum type field!!
 
-	$result = $wpdb->update(
-		$faq_cats_table,
+	$result = psource_support_update_faq_category_row(
+		$faq_category_id,
 		array( 'defcat' => 2 ), // enum type field!!
-		array( 'cat_id' => $faq_category_id ),
-		array( '%d' ),
 		array( '%d' )
 	);
 
@@ -269,10 +276,6 @@ function psource_support_set_default_faq_category( $faq_category_id ) {
 }
 
 function psource_support_delete_faq_category( $faq_category_id ) {
-	global $wpdb;
-
-	$faq_cats_table = psource_support()->model->faq_cats_table;
-
 	$faq_category = psource_support_get_faq_category( $faq_category_id );
 	if ( ! $faq_category )
 		return false;
@@ -294,7 +297,7 @@ function psource_support_delete_faq_category( $faq_category_id ) {
 			psource_support_update_faq( $faq->faq_id, array( 'cat_id' => $default_category->cat_id ) );
 	}
 
-	$wpdb->query( $wpdb->prepare( "DELETE FROM $faq_cats_table WHERE cat_id = %d", $faq_category_id ) );
+	psource_support_delete_faq_category_row( $faq_category_id );
 
 	psource_support_clean_faq_category_cache( $faq_category_id );
 

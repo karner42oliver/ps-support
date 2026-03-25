@@ -1,5 +1,46 @@
 <?php
 
+function psource_support_get_ticket_category_table() {
+	return psource_support()->model->tickets_cats_table;
+}
+
+function psource_support_get_ticket_category_rows( $where, $order = '', $limit = '', $count = false ) {
+	global $wpdb;
+	$table = psource_support_get_ticket_category_table();
+	if ( $count ) {
+		return $wpdb->get_var( "SELECT COUNT(cat_id) FROM $table $where" );
+	}
+	return $wpdb->get_results( "SELECT cat_id, cat_name, defcat, user_id FROM $table $where $order $limit" );
+}
+
+function psource_support_insert_ticket_category_row( $insert ) {
+	global $wpdb;
+	$res = $wpdb->insert(
+		psource_support_get_ticket_category_table(),
+		$insert,
+		array( '%s', '%d', '%d' )
+	);
+	return $res ? $wpdb->insert_id : false;
+}
+
+function psource_support_update_ticket_category_row( $cat_id, $update, $wildcards ) {
+	global $wpdb;
+	return $wpdb->update(
+		psource_support_get_ticket_category_table(),
+		$update,
+		array( 'cat_id' => $cat_id ),
+		$wildcards,
+		array( '%d' )
+	);
+}
+
+function psource_support_delete_ticket_category_row( $cat_id ) {
+	global $wpdb;
+	return $wpdb->query(
+		$wpdb->prepare( "DELETE FROM " . psource_support_get_ticket_category_table() . " WHERE cat_id = %d", $cat_id )
+	);
+}
+
 function psource_support_sanitize_ticket_category_fields( $cat ) {
 	$int_fields = array( 'cat_id', 'user_id', 'site_id' );
 
@@ -36,7 +77,6 @@ function psource_support_get_ticket_categories( $args = array() ) {
 	$args = wp_parse_args( $args, $defaults );
 	extract( $args );
 
-	$table = psource_support()->model->tickets_cats_table;
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
 
 	// WHERE
@@ -62,14 +102,11 @@ function psource_support_get_ticket_categories( $args = array() ) {
 		$limit = $wpdb->prepare( "LIMIT %d, %d", intval( ( $page - 1 ) * $per_page ), intval( $per_page ) );
 
 	if ( $count ) {
-		$query = "SELECT COUNT(cat_id) FROM $table $where";
-		$results = $wpdb->get_var( $query );
-
+		$results = psource_support_get_ticket_category_rows( $where, '', '', true );
 		$cats = apply_filters( 'support_system_get_ticket_categories_count', $results, $args );
 	}
 	else {
-		$query = "SELECT cat_id, cat_name, defcat, user_id FROM $table $where $order $limit";
-		$_cats = $wpdb->get_results( $query );
+		$_cats = psource_support_get_ticket_category_rows( $where, $order, $limit );
 		$cats = array_map( 'psource_support_get_ticket_category', $_cats );
 		
 		if ( empty( $cats ) )
@@ -126,11 +163,9 @@ function psource_support_ticket_categories_dropdown( $args = array() ) {
 }
 
 function psource_support_insert_ticket_category( $name, $user_id = false ) {
-	global $wpdb, $current_site;
+	global $current_site;
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
-
-	$tickets_cats_table = psource_support()->model->tickets_cats_table;
 
 	$user_id = $user_id === false ? get_current_user_id() : absint( $user_id );
 	
@@ -142,20 +177,14 @@ function psource_support_insert_ticket_category( $name, $user_id = false ) {
 	if ( $ticket_category )
 		return false;
 
-	$res = $wpdb->insert(
-		$tickets_cats_table,
-		array( 
-			'cat_name' 	=> $name,
-			'site_id'	=> $current_site_id,
-			'user_id'	=> $user_id,
-		),
-		array( '%s', '%d', '%d' )
-	);
+	$cat_id = psource_support_insert_ticket_category_row( array(
+		'cat_name' => $name,
+		'site_id'  => $current_site_id,
+		'user_id'  => $user_id,
+	) );
 
-	if ( ! $res )
+	if ( ! $cat_id )
 		return false;
-
-	$cat_id = $wpdb->insert_id;
 
 	do_action( 'support_system_insert_ticket_category', $cat_id );
 
@@ -163,10 +192,6 @@ function psource_support_insert_ticket_category( $name, $user_id = false ) {
 }
 
 function psource_support_update_ticket_category( $ticket_category_id, $args = array() ) {
-	global $wpdb, $current_site;
-
-	$tickets_cats_table = psource_support()->model->tickets_cats_table;
-
 	$ticket_category = psource_support_get_ticket_category( $ticket_category_id );
 	if ( ! $ticket_category )
 		return false;
@@ -197,13 +222,7 @@ function psource_support_update_ticket_category( $ticket_category_id, $args = ar
 		psource_support_set_default_ticket_category( $ticket_category_id );
 	
 
-	$result = $wpdb->update(
-		$tickets_cats_table,
-		$update,
-		array( 'cat_id' => $ticket_category_id ),
-		$update_wildcards,
-		array( '%d' )
-	);
+	$result = psource_support_update_ticket_category_row( $ticket_category_id, $update, $update_wildcards );
 
 	if ( ! $result )
 		return false;
@@ -237,21 +256,17 @@ function psource_support_get_default_ticket_category() {
 function psource_support_set_default_ticket_category( $ticket_category_id ) {
 	global $wpdb;
 
-	$tickets_cats_table = psource_support()->model->tickets_cats_table;
-
 	$ticket_category = psource_support_get_ticket_category( $ticket_category_id );
 	if ( ! $ticket_category )
 		return false;
 
 	$default_category = psource_support_get_default_ticket_category();
 	if ( $default_category )
-		$wpdb->query( "UPDATE $tickets_cats_table SET defcat = 1" ); // enum type field!!
+		$wpdb->query( "UPDATE " . psource_support_get_ticket_category_table() . " SET defcat = 1" ); // enum type field!!
 
-	$result = $wpdb->update(
-		$tickets_cats_table,
+	$result = psource_support_update_ticket_category_row(
+		$ticket_category_id,
 		array( 'defcat' => 2 ), // enum type field!!
-		array( 'cat_id' => $ticket_category_id ),
-		array( '%d' ),
 		array( '%d' )
 	);
 
@@ -267,10 +282,6 @@ function psource_support_set_default_ticket_category( $ticket_category_id ) {
 }
 
 function psource_support_delete_ticket_category( $ticket_category_id ) {
-	global $wpdb;
-
-	$tickets_cats_table = psource_support()->model->tickets_cats_table;
-
 	$ticket_category = psource_support_get_ticket_category( $ticket_category_id );
 	if ( ! $ticket_category )
 		return false;
@@ -292,7 +303,7 @@ function psource_support_delete_ticket_category( $ticket_category_id ) {
 			psource_support_update_ticket( $ticket->ticket_id, array( 'cat_id' => $default_category->cat_id ) );
 	}
 
-	$wpdb->query( $wpdb->prepare( "DELETE FROM $tickets_cats_table WHERE cat_id = %d", $ticket_category_id ) );
+	psource_support_delete_ticket_category_row( $ticket_category_id );
 
 	psource_support_clean_ticket_category_cache( $ticket_category_id );
 

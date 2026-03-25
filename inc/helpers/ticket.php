@@ -119,14 +119,89 @@ function psource_support_get_ticket_priority_name( $priority_id ) {
 	return MU_Support_System::$ticket_priority[ $priority_id ];
 }
 
+function psource_support_get_ticket_tables() {
+	$plugin = psource_support();
 
-/**
- * Get a set of tickets
- * 
- * @param  array  $args
- * @return array
- */
-function psource_support_get_tickets( $args = array() ) {
+	return array(
+		'tickets' => $plugin->model->tickets_table,
+		'messages' => $plugin->model->tickets_messages_table,
+	);
+}
+
+function psource_support_build_tickets_query_parts( $args ) {
+	global $wpdb, $current_site;
+
+	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
+	$tables = psource_support_get_ticket_tables();
+
+	$where = array();
+	if ( 'archive' == $args['status'] )
+		$where[] = "t.ticket_status = 5";
+	elseif ( 'all' == $args['status'] )
+		$where[] = '1 = 1';
+	else
+		$where[] = "t.ticket_status != 5";
+
+	if ( $args['category'] )
+		$where[] = $wpdb->prepare( "t.cat_id = %d", $args['category'] );
+
+	if ( $args['priority'] !== false )
+		$where[] = $wpdb->prepare( "t.ticket_priority = %d", $args['priority'] );
+
+	if ( absint( $args['blog_id'] ) > 0 )
+		$where[] = $wpdb->prepare( "t.blog_id = %d", $args['blog_id'] );
+
+	if ( ! empty( $args['user_in'] ) && is_array( $args['user_in'] ) ) {
+		$user_in = array_map( 'absint', $args['user_in'] );
+		$where[] = "t.user_id IN (" . implode( ',', $user_in ) . ")";
+	}
+
+	if ( $args['view_by_superadmin'] !== null )
+		$where[] = $wpdb->prepare( "t.view_by_superadmin = %d", $args['view_by_superadmin'] );
+
+	if ( $args['s'] ) {
+		$search = '%' . $args['s'] . '%';
+		$where[] = $wpdb->prepare( "(t.title LIKE %s OR tm.message LIKE %s)", $search, $search );
+	}
+
+	$site_id = absint( $args['site_id'] );
+	if ( $site_id )
+		$where[] = $wpdb->prepare( "t.site_id = %d", $site_id );
+	else
+		$where[] = $wpdb->prepare( "t.site_id = %d", $current_site_id );
+
+	$allowed_orderby = array( 'ticket_updated', 'title', 'cat_id', 'admin_id', 'blog_id', 'num_replies', 'ticket_priority', 'ticket_status' );
+	$allowed_order = array( 'DESC', 'ASC' );
+	$order_query = '';
+	$order = strtoupper( $args['order'] );
+	if ( in_array( $args['orderby'], $allowed_orderby ) && in_array( $order, $allowed_order ) ) {
+		$order_query = "ORDER BY {$args['orderby']} $order";
+	}
+
+	$limit = '';
+	if ( $args['per_page'] > -1 )
+		$limit = $wpdb->prepare( "LIMIT %d, %d", intval( ( $args['page'] - 1 ) * $args['per_page'] ), intval( $args['per_page'] ) );
+
+	$where = "WHERE " . implode( ' AND ', $where );
+
+	$join = '';
+	$group = '';
+	if ( $args['s'] ) {
+		$join = "LEFT JOIN {$tables['messages']} tm ON t.ticket_id = tm.ticket_id";
+		$group = "GROUP BY t.ticket_id";
+	}
+
+	return array(
+		'tables' => $tables,
+		'join' => apply_filters( 'support_system_get_tickets_join', $join, $args['count'], $args ),
+		'where' => apply_filters( 'support_system_get_tickets_where', $where, $args['count'], $args ),
+		'group' => apply_filters( 'support_system_get_tickets_group', $group, $args['count'], $args ),
+		'order' => $order_query,
+		'limit' => $limit,
+	);
+}
+
+function psource_support_get_ticket_rows( $args ) {
 	global $wpdb, $current_site;
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
@@ -148,86 +223,58 @@ function psource_support_get_tickets( $args = array() ) {
 	);
 	$args = wp_parse_args( $args, $defaults );
 
-	extract( $args );
+	$parts = psource_support_build_tickets_query_parts( $args );
+	$select = $args['count']
+		? "SELECT COUNT(tickets.ticket_id) FROM (SELECT t.ticket_id FROM {$parts['tables']['tickets']} t {$parts['join']} {$parts['where']} {$parts['group']}) tickets"
+		: "SELECT t.* FROM {$parts['tables']['tickets']} t {$parts['join']} {$parts['where']} {$parts['group']} {$parts['order']} {$parts['limit']}";
 
-	$where = array();
-	if ( 'archive' == $status )
-		$where[] = "t.ticket_status = 5";
-	elseif ( 'all' == $status )
-		$where[] = '1 = 1';
-	else
-		$where[] = "t.ticket_status != 5";
+	return $args['count'] ? $wpdb->get_var( $select ) : $wpdb->get_results( $select );
+}
 
-	if ( $category )
-		$where[] = $wpdb->prepare( "t.cat_id = %d", $category );
+function psource_support_delete_ticket_rows( $ticket_id ) {
+	global $wpdb;
 
-	if ( $priority !== false )
-		$where[] = $wpdb->prepare( "t.ticket_priority = %d", $priority );
+	$tables = psource_support_get_ticket_tables();
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$tables['tickets']} WHERE ticket_id = %d", $ticket_id ) );
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$tables['messages']} WHERE ticket_id = %d", $ticket_id ) );
+}
 
-	if ( absint( $blog_id ) > 0 )
-		$where[] = $wpdb->prepare( "t.blog_id = %d", $blog_id );
+function psource_support_insert_ticket_row( $insert ) {
+	global $wpdb;
 
-	if ( ! empty( $user_in ) && is_array( $user_in ) ) {
-		$user_in = array_map( 'absint', $user_in );
-		$where[] = "t.user_id IN (" . implode( ',', $user_in ) . ")";
-	}
+	$tables = psource_support_get_ticket_tables();
+	$wpdb->insert( $tables['tickets'], $insert );
 
-	if ( $view_by_superadmin !== null )
-		$where[] = $wpdb->prepare( "t.view_by_superadmin = %d", $view_by_superadmin );
+	return (int) $wpdb->insert_id;
+}
 
-	if ( $s ) {
-		$s = '%' . $s . '%';
-		$where[] = $wpdb->prepare( "(t.title LIKE %s OR tm.message LIKE %s)", $s, $s );
-	}
+function psource_support_update_ticket_row( $ticket_id, $update, $update_wildcards ) {
+	global $wpdb;
 
-	$site_id = absint( $site_id );
-	if ( $site_id )
-		$where[] = $wpdb->prepare( "t.site_id = %d", $site_id );
-	else
-		$where[] = $wpdb->prepare( "t.site_id = %d", $current_site_id );
+	$tables = psource_support_get_ticket_tables();
 
-	$tickets_table = psource_support()->model->tickets_table;
+	return $wpdb->update(
+		$tables['tickets'],
+		$update,
+		array( 'ticket_id' => $ticket_id ),
+		$update_wildcards,
+		array( '%d' )
+	);
+}
 
-	$allowed_orderby = array( 'ticket_updated', 'title', 'cat_id', 'admin_id', 'blog_id', 'num_replies', 'ticket_priority', 'ticket_status' );
-	$allowed_order = array( 'DESC', 'ASC' );
-	$order_query = '';
-	$order = strtoupper( $order );
-	if ( in_array( $orderby, $allowed_orderby ) && in_array( $order, $allowed_order ) ) {
-		$order_query = "ORDER BY $orderby $order";
-	}
+/**
+ * Get a set of tickets
+ * 
+ * @param  array  $args
+ * @return array
+ */
+function psource_support_get_tickets( $args = array() ) {
+	$args['count'] = ! empty( $args['count'] );
+	$results = psource_support_get_ticket_rows( $args );
 
-	$limit = '';
-	if ( $per_page > -1 )
-		$limit = $wpdb->prepare( "LIMIT %d, %d", intval( ( $page - 1 ) * $per_page ), intval( $per_page ) );
-
-
-
-	$where = "WHERE " . implode( ' AND ', $where );
-
-	$join = '';
-	if ( $s ) {
-		$tickets_messages_table = psource_support()->model->tickets_messages_table;
-		$join = "LEFT JOIN $tickets_messages_table tm ON t.ticket_id = tm.ticket_id";
-	}
-
-	$group = '';
-	if ( $s ) {
-		$group = "GROUP BY t.ticket_id";
-	}
-
-	$join = apply_filters( 'support_system_get_tickets_join', $join, $count, $args );
-	$where = apply_filters( 'support_system_get_tickets_where', $where, $count, $args );
-	$group = apply_filters( 'support_system_get_tickets_group', $group, $count, $args );
-
-	$tickets = array();
-	if ( $count ) {
-		$query = "SELECT COUNT(tickets.ticket_id) FROM (SELECT t.ticket_id FROM $tickets_table t $join $where $group) tickets";
-		$results = $wpdb->get_var( $query );
+	if ( $args['count'] ) {
 		$tickets = $results;
-	}
-	else {
-		$query = "SELECT t.* FROM $tickets_table t $join $where $group $order_query $limit";
-		$results = $wpdb->get_results( $query );
+	} else {
 		$tickets = array_map( 'psource_support_get_ticket', $results );
 	}
 
@@ -356,32 +403,12 @@ function psource_support_restore_ticket_previous_status( $ticket_id ) {
  * @return Boolean
  */
 function psource_support_delete_ticket( $ticket_id ) {
-	global $wpdb;
-
 	$ticket = psource_support_get_ticket( $ticket_id );
 
 	if ( ! $ticket )
 		return false;
 
-	$plugin = psource_support();
-	$tickets_table = $plugin->model->tickets_table;
-	$tickets_messages_table = $plugin->model->tickets_messages_table;
-
-	$wpdb->query( 
-		$wpdb->prepare( 
-			"DELETE FROM $tickets_table
-			 WHERE ticket_id = %d",
-		     $ticket_id
-	     )
-	);
-
-	$wpdb->query( 
-		$wpdb->prepare( 
-			"DELETE FROM $tickets_messages_table
-			 WHERE ticket_id = %d",
-		     $ticket_id
-	     )
-	);
+	psource_support_delete_ticket_rows( $ticket_id );
 
 	$old_ticket = $ticket;
 
@@ -401,8 +428,6 @@ function psource_support_delete_ticket( $ticket_id ) {
  * @return boolean
  */
 function psource_support_update_ticket( $ticket_id, $args ) {
-	global $wpdb;
-
 	$ticket = psource_support_get_ticket( $ticket_id );
 	if ( ! $ticket )
 		return false;
@@ -421,19 +446,11 @@ function psource_support_update_ticket( $ticket_id, $args ) {
 
 	if ( empty( $update ) )
 		return false;
-	
-	$tickets_table = psource_support()->model->tickets_table;
 
 	$update['ticket_updated'] = current_time( 'mysql', true );
 	$update_wildcards[] = '%s';
 
-	$result = $wpdb->update(
-		$tickets_table,
-		$update,
-		array( 'ticket_id' => $ticket_id ),
-		$update_wildcards,
-		array( '%d' )
-	);
+	$result = psource_support_update_ticket_row( $ticket_id, $update, $update_wildcards );
 
 	if ( ! $result )
 		return false;
@@ -585,14 +602,8 @@ function psource_support_insert_ticket( $args = array() ) {
 	
 	wp_unslash( $insert );
 	
-	// Insert the ticket	
-	$table = psource_support()->model->tickets_table;
-	$wpdb->insert(
-		$table,
-		$insert
-	);
-
-	$ticket_id = $wpdb->insert_id;
+	// Insert the ticket
+	$ticket_id = psource_support_insert_ticket_row( $insert );
 
 	if ( ! $ticket_id )
 		return new WP_Error( 'insert_error', __( 'Fehler beim Einfügen des Tickets, versuche es später erneut.', 'psource-support' ) );

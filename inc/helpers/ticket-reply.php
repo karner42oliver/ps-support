@@ -1,28 +1,52 @@
 <?php
 
-function psource_support_get_ticket_replies( $ticket_id ) {
-	global $wpdb, $current_site;
+function psource_support_get_ticket_reply_table() {
+	return psource_support()->model->tickets_messages_table;
+}
 
+function psource_support_get_ticket_reply_rows( $ticket_id ) {
+	global $wpdb;
+
+	$table = psource_support_get_ticket_reply_table();
+	$query = $wpdb->prepare(
+		"SELECT * FROM $table
+		WHERE ticket_id = %d
+		ORDER BY message_id ASC",
+		$ticket_id
+	);
+
+	return $wpdb->get_results( $query );
+}
+
+function psource_support_insert_ticket_reply_row( $insert ) {
+	global $wpdb;
+
+	$wpdb->insert(
+		psource_support_get_ticket_reply_table(),
+		$insert,
+		array( '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s' )
+	);
+
+	return (int) $wpdb->insert_id;
+}
+
+function psource_support_delete_ticket_reply_row( $reply_id ) {
+	global $wpdb;
+
+	return $wpdb->query( $wpdb->prepare( "DELETE FROM " . psource_support_get_ticket_reply_table() . " WHERE message_id = %d", $reply_id ) );
+}
+
+function psource_support_get_ticket_replies( $ticket_id ) {
 	$_replies = array();
 
 	$ticket = psource_support_get_ticket( $ticket_id );
 	if ( ! $ticket )
 		return $_replies;
-
-	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
-	$tickets_replies_table = psource_support()->model->tickets_messages_table;
-
-	$query = $wpdb->prepare(
-		"SELECT * FROM $tickets_replies_table
-		WHERE ticket_id = %d
-		ORDER BY message_id ASC",
-		$ticket_id
-	);
 	
 	$results = wp_cache_get( 'support-ticket-' . $ticket_id, 'support_system_ticket_replies' );
 
 	if ( $results === false ){
-		$results = $wpdb->get_results( $query );
+		$results = psource_support_get_ticket_reply_rows( $ticket_id );
 		wp_cache_set( 'support-ticket-' . $ticket_id, $results, 'support_system_ticket_replies' );
 	}
 
@@ -78,7 +102,7 @@ function psource_support_get_uploaded_attachment_urls( $files ) {
  * @return int|boolean
  */
 function psource_support_insert_ticket_reply( $ticket_id, $args = array() ) {
-	global $wpdb, $current_site;
+	global $current_site;
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
 
@@ -103,13 +127,9 @@ function psource_support_insert_ticket_reply( $ticket_id, $args = array() ) {
 	$args = wp_parse_args( $args, $defaults );
 	extract( $args );
 
-	$plugin = psource_support();
-	$tickets_replies_table = $plugin->model->tickets_messages_table;
-
 	$message = wp_kses_post( wp_unslash( $message ) );
-	
-	$result = $wpdb->insert(
-		$tickets_replies_table,
+
+	$reply_id = psource_support_insert_ticket_reply_row(
 		array(
 			'site_id' => $site_id,
 			'ticket_id' => absint( $ticket_id ),
@@ -119,14 +139,8 @@ function psource_support_insert_ticket_reply( $ticket_id, $args = array() ) {
 			'message' => $message,
 			'message_date' => $message_date,
 			'attachments' => maybe_serialize( $attachments )
-		),
-		array( '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s' )
+		)
 	);
-
-	if ( ! $result )
-		return false;
-
-	$reply_id = $wpdb->insert_id;
 
 	if ( ! $reply_id )
 		return false;
@@ -171,9 +185,7 @@ function psource_support_delete_ticket_reply( $reply_id ) {
 		return false;
 	}
 
-	$tickets_replies_table = psource_support()->model->tickets_messages_table;
-
-	$wpdb->query( $wpdb->prepare( "DELETE FROM $tickets_replies_table WHERE message_id = %d", $reply_id ) );
+	psource_support_delete_ticket_reply_row( $reply_id );
 	psource_support_recount_ticket_replies( $ticket_reply->ticket_id );
 
 	$old_ticket_reply = $ticket_reply;

@@ -1,5 +1,42 @@
 <?php 
 
+function psource_support_get_faq_table() {
+	return psource_support()->model->faq_table;
+}
+
+function psource_support_get_faq_rows( $where, $order_query = '', $limit = '', $count = false ) {
+	global $wpdb;
+	$table = psource_support_get_faq_table();
+	if ( $count ) {
+		return $wpdb->get_var( "SELECT COUNT(faq_id) FROM $table WHERE $where" );
+	}
+	return $wpdb->get_results( "SELECT * FROM $table WHERE $where $order_query $limit" );
+}
+
+function psource_support_insert_faq_row( $insert, $wildcards ) {
+	global $wpdb;
+	$wpdb->insert( psource_support_get_faq_table(), $insert, $wildcards );
+	return $wpdb->insert_id;
+}
+
+function psource_support_update_faq_row( $faq_id, $update, $wildcards ) {
+	global $wpdb;
+	return $wpdb->update(
+		psource_support_get_faq_table(),
+		$update,
+		array( 'faq_id' => $faq_id ),
+		$wildcards,
+		array( '%d' )
+	);
+}
+
+function psource_support_delete_faq_row( $faq_id ) {
+	global $wpdb;
+	return $wpdb->query(
+		$wpdb->prepare( "DELETE FROM " . psource_support_get_faq_table() . " WHERE faq_id = %d", $faq_id )
+	);
+}
+
 function psource_support_sanitize_faq_fields( $faq ) {
 	$int_fields = array( 'faq_id', 'site_id', 'cat_id', 'help_views', 'help_count', 'help_yes', 
 		'help_no' );
@@ -81,17 +118,12 @@ function psource_support_get_faqs( $args = array() ) {
 
 	$where = implode( ' AND ', $where );
 
-	$faqs_table = psource_support()->model->faq_table;
-
 	$faqs = array();
 	if ( $count ) {
-		$query = "SELECT COUNT(faq_id) FROM $faqs_table WHERE $where";
-		$results = $wpdb->get_var( $query );
-		$faqs = $results;
+		$faqs = psource_support_get_faq_rows( $where, '', '', true );
 	}
 	else {
-		$query = "SELECT * FROM $faqs_table WHERE $where $order_query $limit";
-		$results = $wpdb->get_results( $query );
+		$results = psource_support_get_faq_rows( $where, $order_query, $limit );
 		$faqs = array_map( 'psource_support_get_faq', $results );
 	}
 
@@ -124,7 +156,7 @@ function psource_support_get_faqs_count( $args = array() ) {
  * @return mixed the new FAQ ID, WP_Error otherwise
  */
 function psource_support_insert_faq( $args = array() ) {
-	global $wpdb, $current_site;
+	global $current_site;
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
 
@@ -172,14 +204,7 @@ function psource_support_insert_faq( $args = array() ) {
 	$insert['answer'] = $answer; 
 	$insert_wildcards[] = '%s'; 
 
-	$table = psource_support()->model->faq_table;
-	$wpdb->insert(
-		$table,
-		$insert,
-		$insert_wildcards
-	);
-
-	$faq_id = $wpdb->insert_id;
+	$faq_id = psource_support_insert_faq_row( $insert, $insert_wildcards );
 
 	if ( ! $faq_id )
 		return new WP_Error( 'insert_error', __( 'Fehler beim Einfügen des FAQ-Elements. Bitte versuche es später erneut.', 'psource-support' ) );
@@ -193,8 +218,6 @@ function psource_support_insert_faq( $args = array() ) {
 }
 
 function psource_support_update_faq( $faq_id, $args ) {
-	global $wpdb;
-
 	$faq = psource_support_get_faq( $faq_id );
 	if ( ! $faq )
 		return false;
@@ -214,15 +237,7 @@ function psource_support_update_faq( $faq_id, $args ) {
 	if ( empty( $update ) )
 		return false;
 	
-	$faqs_table = psource_support()->model->faq_table;
-
-	$result = $wpdb->update(
-		$faqs_table,
-		$update,
-		array( 'faq_id' => $faq_id ),
-		$update_wildcards,
-		array( '%d' )
-	);
+	$result = psource_support_update_faq_row( $faq_id, $update, $update_wildcards );
 
 	if ( ! $result )
 		return false;
@@ -258,23 +273,12 @@ function psource_support_vote_faq( $faq_id, $vote ) {
  * @return Boolean
  */
 function psource_support_delete_faq( $faq_id ) {
-    global $wpdb;
-
     $faq = psource_support_get_faq( $faq_id );
 
     if ( ! $faq )
         return false;
 
-    $faqs_table = psource_support()->model->faq_table;
-
-    $wpdb->query( 
-        $wpdb->prepare( 
-            "DELETE FROM $faqs_table
-             WHERE faq_id = %d",
-             $faq_id
-         )
-    );
-
+    psource_support_delete_faq_row( $faq_id );
 
     $old_faq = $faq;
     do_action( 'support_system_delete_faq', $faq_id, $old_faq );
