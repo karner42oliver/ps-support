@@ -1,61 +1,11 @@
 @charset "UTF-8";
-// Foundation by ZURB
-// foundation.zurb.com
-// Licensed under MIT Open Source
-
-$namespace: "support-system";
-@import "compass/css3";
-@import "compass/utilities";
 @import "settings";
+@import "utilities";
+@import "type";
+@import "forms";
   
 $reply-background:#f7f7f7;
 $reply-staff-background: darken( $reply-background, 1.5 );
-
-// Make sure the charset is set appropriately
-
-
-// Behold, here are all the Foundation components.
-#support-system {
-  @import "foundation/components/grid";
-  @import "foundation/components/accordion";
-  @import "foundation/components/alert-boxes";
-  @import "foundation/components/block-grid";
-  @import "foundation/components/breadcrumbs";
-  @import "foundation/components/button-groups";
-  @import "foundation/components/buttons";
-  @import "foundation/components/clearing";
-  //@import "foundation/components/dropdown";
-  //@import "foundation/components/dropdown-buttons";
-  //@import "foundation/components/flex-video";
-  //@import "foundation/components/forms";
-  //@import "foundation/components/icon-bar";
-  @import "foundation/components/inline-lists";
-  //@import "foundation/components/joyride";
-  //@import "foundation/components/keystrokes";
-  @import "foundation/components/labels";
-  //@import "foundation/components/magellan";
-  //@import "foundation/components/orbit"; 
-  @import "foundation/components/pagination";
-  @import "foundation/components/panels";
-  //@import "foundation/components/pricing-tables";
-  //@import "foundation/components/progress-bars";
-  //@import "foundation/components/range-slider";
-  //@import "foundation/components/reveal";
-  //@import "foundation/components/side-nav";
-  //@import "foundation/components/split-buttons";
-  //@import "foundation/components/sub-nav";
-  @import "foundation/components/switches";
-  //@import "foundation/components/tables";
-  //@import "foundation/components/tabs";
-  //@import "foundation/components/thumbs";
-  //@import "foundation/components/tooltips";
-  //@import "foundation/components/top-bar";
-  //@import "foundation/components/type";
-  //@import "foundation/components/offcanvas";
-  @import "foundation/components/visibility";
-
-  @import "_type"; 
-}
 
 body #support-system {
   font-size:$base-font-size;
@@ -230,22 +180,38 @@ body #support-system {
 }
 
 #support-system {
-  @import "foundation/components/alert-boxes";
-
   .support-system-alert {
-    @include alert;
-    &.warning { @include alert-style($warning-color); }
-    &.alert { @include alert-style($alert-color); }
-    &.info { @include alert-style($info-color); }
+  background-color: $primary-color;
+  border: 1px solid #0078a0;
+  color: #fff;
+  display: block;
+  font-size: 1rem;
+  font-weight: normal;
+  margin-bottom: 1.53846rem;
+  padding: 1.07692rem 1.84615rem 1.07692rem 1.07692rem;
+  position: relative;
+  transition: opacity 300ms ease-out;
+
+  &.warning {
+    background-color: $warning-color;
+    border-color: #de770f;
+  }
+
+  &.alert {
+    background-color: $alert-color;
+    border-color: #de2d0f;
+  }
+
+  &.info {
+    background-color: $info-color;
+    border-color: #74bfdd;
+    color: #4f4f4f;
+  }
   }
 }
 
 #support-system img.avatar {
   margin-top:0;
-}
-
-#support-system {
-  @import "forms";
 }
 
 #support-system .support-system-reply-staff .support-system-ticket-reply-wrap {
@@ -298,10 +264,6 @@ body #support-system {
 /** FAQS */
 #support-system .support-system-faq-answer {
   margin-top:30px;
-}
-
-meta.foundation-data-attribute-namespace {
-  font-family: false; 
 }
 
 #support-system .accordion .accordion-navigation {

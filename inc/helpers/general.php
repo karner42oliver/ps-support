@@ -327,8 +327,15 @@ function psource_support_enqueue_main_script() {
 
 }
 
-function psource_support_enqueue_foundation_scripts( $in_footer = true ) {
+
+function psource_support_enqueue_frontend_scripts( $in_footer = true ) {
+	unset( $in_footer );
+
 	psource_support_enqueue_main_script();
+}
+
+function psource_support_enqueue_foundation_scripts( $in_footer = true ) {
+	psource_support_enqueue_frontend_scripts( $in_footer );
 }
 
 

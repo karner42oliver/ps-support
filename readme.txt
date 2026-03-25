@@ -3,7 +3,7 @@ Contributors: DerN3rd (PSOURCE)
 Tags: multisite, support, helpdesk, classicpress-plugin
 Requires at least: 4.9
 Tested up to: 6.8.1
-Stable tag: 2.2.5
+Stable tag: 1.0.0
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -32,35 +32,6 @@ Der mitgelieferte Texteditor eignet sich perfekt für einfaches Styling und Date
 
 == ChangeLog ==
 
-= 2.2.5 =
+= 1.0.0 =
 
-* Updater 1.3
-* Veraltetes jQuery modernisiert
-* Links aktualisiert
-* Docs hinzugefügt
-
-= 2.2.4 =
-
-* Viele PhP8 Fixes
-* jQuery Fixes
-* ClassicPress 2.0 getestet
-
-= 2.2.3 =
-
-* In English
-* Updater v1.2
-* Neue links
-* Readme ergänzt
-* WordPress->ClassicPress
-
-= 2.2.2 =
-
-* PhP8 Fix Admindashboard
-* Psource Updater aktualisiert
-* Textdomain angepasst
-* Getestet mit PhP8
-
-= 2.2.1 =
-
-* Overhauled von WPMUDEV
-* Release WMS N@W Netzwerksuche
+* Release W
