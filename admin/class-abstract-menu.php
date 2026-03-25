@@ -29,7 +29,7 @@ abstract class PSource_Support_Admin_Menu {
 
     public function render_page() {
         ?>
-        <div class="wrap">
+        <div class="wrap support-system-admin support-system-admin-<?php echo esc_attr( sanitize_html_class( $this->slug ) ); ?>">
             <?php
             /**
              * Filters the Support System Admin Pages Titles

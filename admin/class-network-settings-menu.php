@@ -2,6 +2,11 @@
 
 class PSource_Support_Network_Settings_Menu extends PSource_Support_Admin_Menu {
 
+	public function __construct( $slug, $network = false ) {
+		parent::__construct( $slug, $network );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	}
+
 	public function add_menu() {		
 		parent::add_submenu_page(
 			'ticket-manager',
@@ -10,6 +15,15 @@ class PSource_Support_Network_Settings_Menu extends PSource_Support_Admin_Menu {
 			is_multisite() ? 'manage_network' : 'manage_options'
 		);
 
+	}
+
+	public function enqueue_assets( $hook ) {
+		if ( $hook !== $this->page_id ) {
+			return;
+		}
+
+		wp_enqueue_style( 'support-menu-styles', PSOURCE_SUPPORT_PLUGIN_URL . 'admin/assets/css/support-menu.css', array(), PSOURCE_SUPPORT_PLUGIN_VERSION );
+		psource_support_enqueue_admin_script();
 	}
 
 

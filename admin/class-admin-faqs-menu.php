@@ -46,9 +46,11 @@ class PSource_Support_Admin_FAQ_Menu extends PSource_Support_Admin_Menu {
 
 	public function enqueue_scripts( $hook ) {
 		psource_support_enqueue_main_script();
+		psource_support_enqueue_admin_script();
 	}
 
 	public function enqueue_styles( $hook ) {
+		wp_enqueue_style( 'support-menu-styles', PSOURCE_SUPPORT_PLUGIN_URL . 'admin/assets/css/support-menu.css', array(), PSOURCE_SUPPORT_PLUGIN_VERSION );
 		wp_enqueue_style( 'mu-support-faq-css', PSOURCE_SUPPORT_PLUGIN_URL . 'admin/assets/css/support-admin-faqs-menu.css', array( ), '20130402' );
 	}
 

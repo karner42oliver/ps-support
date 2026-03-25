@@ -202,3 +202,40 @@ ul.ticket-fields .ticket-field-value {
 #edit-ticket-form-errors {
 	padding-top: 40px;
 }
+
+.support-system-spinner {
+	float: none;
+}
+
+.support-system-admin .accordion ul li {
+	list-style: disc;
+	margin-left: 25px;
+}
+
+.support-system-admin #faq-categories .faq-categories-column {
+	width: 32%;
+	min-width: 200px;
+	float: left;
+}
+
+.support-system-admin .faq-question-title {
+	cursor: pointer;
+	background: none;
+	font-size: 15px;
+	font-weight: normal;
+	margin-left: 15px;
+}
+
+.support-system-admin .form-table .support-create-page,
+.support-system-admin .form-table .support-view-page {
+	display:none;
+	margin-right: 10px;
+}
+
+.support-system-admin #front-options {
+	display:block;
+}
+
+.support-system-admin #front-options.disabled {
+	display:none;
+}

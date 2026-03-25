@@ -21,6 +21,7 @@ class PSource_Support_Parent_Support_Menu extends PSource_Support_Admin_Menu {
 	public function enqueue_scripts( $page_id ) {
 		if ( $page_id === $this->page_id ) {
 			psource_support_enqueue_main_script();
+			psource_support_enqueue_admin_script();
 
 		}
 	}
@@ -43,250 +44,225 @@ class PSource_Support_Parent_Support_Menu extends PSource_Support_Admin_Menu {
 		if ( $action !== 'edit' )
 			add_screen_option( 'per_page', array( 'label' => __( 'Tickets pro Seite', 'psource-support' ), 'default' => 20, 'option' => 'psource_support_tickets_per_page' ) );
 
-		// Check filtering
-		if ( isset( $_POST['filter_action'] ) || ! empty( $_POST['s'] ) ) {
+		$this->maybe_redirect_filtered_list();
+		$this->maybe_handle_ticket_update();
+		$this->maybe_handle_ticket_reply();
+		$this->maybe_redirect_to_faq_creation();
+	}
 
-			$filters = array(
-				'category' => false,
-				'priority' => false,
-				's' => false
-			);
-
-			$url = false;
-
-			if ( ! empty( $_REQUEST['ticket-cat'] ) && $cat_id = absint( $_REQUEST['ticket-cat'] ) )
-				$filters['category'] = $cat_id;
-
-
-			if ( isset( $_REQUEST['ticket-priority'] ) && $_REQUEST['ticket-priority'] !== '' )
-				$filters['priority'] = $_REQUEST['ticket-priority'];
-
-			if ( ! empty( $_REQUEST['s'] ) )
-				$filters['s'] = stripslashes_deep( $_REQUEST['s'] );
-
-			$url = $_SERVER['REQUEST_URI'];
-			foreach ( $filters as $key => $value ) {
-				if ( $value === false )
-					$url = remove_query_arg( $key, $url );
-				else
-					$url = add_query_arg( $key, $value, $url );
-			}
-
-			wp_redirect( $url );
-			exit();
-			
+	protected function maybe_redirect_filtered_list() {
+		if ( ! isset( $_POST['filter_action'] ) && empty( $_POST['s'] ) ) {
+			return;
 		}
 
-		// Are we updating a ticket?
-		if ( ! empty( $_POST['submit-ticket-details'] ) ) {
-			$ticket_id = absint( $_POST['ticket_id'] );
-			check_admin_referer( 'update-ticket-details-' . $ticket_id );
+		$filters = array(
+			'category' => false,
+			'priority' => false,
+			's' => false,
+		);
 
-			$ticket = psource_support_get_ticket( $ticket_id );
-			if ( ! $ticket )
-				wp_die( __( 'Das Ticket existiert nicht', 'psource-support' ) );
+		if ( ! empty( $_REQUEST['ticket-cat'] ) && $cat_id = absint( $_REQUEST['ticket-cat'] ) )
+			$filters['category'] = $cat_id;
 
-			$plugin = psource_support();
-			$args = array();
+		if ( isset( $_REQUEST['ticket-priority'] ) && $_REQUEST['ticket-priority'] !== '' )
+			$filters['priority'] = $_REQUEST['ticket-priority'];
 
-			// Update Super Admin
-			if ( isset( $_POST['super-admins'] ) ) {
-				$possible_users = MU_Support_System::get_super_admins();
-				if ( in_array( $_POST['super-admins'], $possible_users ) ) {
-					$user = get_user_by( 'login', $_POST['super-admins'] );
-					if ( $user )
-						$args['admin_id'] = $user->data->ID;
-				}
+		if ( ! empty( $_REQUEST['s'] ) )
+			$filters['s'] = stripslashes_deep( $_REQUEST['s'] );
 
-				if ( empty( $_POST['super-admins'] ) )
-					$args['admin_id'] = 0;
-			}
-
-			if ( isset( $_POST['ticket-priority'] ) ) {
-				$possible_values = array_keys( $plugin::$ticket_priority );
-				if ( in_array( absint( $_POST['ticket-priority'] ), $possible_values ) )
-					$args['ticket_priority'] = absint( $_POST['ticket-priority'] );
-			}
-
-			if ( isset( $_POST['ticket-cat'] ) ) {
-				$cat_id = absint( $_POST['ticket-cat'] );
-				if ( psource_support_get_ticket_category( $cat_id ) )
-					$args['cat_id'] = $cat_id;
-			}
-
-			// Close ticket?
-			if ( isset( $_POST['close-ticket'] ) && psource_support_current_user_can( 'close_ticket', $ticket_id ) ) {
-				psource_support_close_ticket( $ticket_id );
-			}
-			elseif ( psource_support_current_user_can( 'open_ticket', $ticket_id ) && $ticket->is_closed() ) {
-				psource_support_restore_ticket_previous_status( $ticket_id );
-			}
-
-			if ( psource_support_current_user_can( 'update_ticket' ) ) {
-				psource_support_update_ticket( $ticket_id, $args );
-			}
-			
-
-			$redirect = add_query_arg( 'updated', 'true' );
-			wp_redirect( $redirect );
-			exit();
-
-		}
-
-		// Are we adding a reply?
-		if ( isset( $_POST['submit-ticket-reply'] ) ) {
-
-			$ticket_id = absint( $_POST['ticket_id'] );
-			check_admin_referer( 'add-ticket-reply-' . $ticket_id );
-
-			$plugin = psource_support();
-			$ticket = psource_support_get_ticket( $ticket_id );
-			if ( ! $ticket )
-				wp_die( __( 'Das Ticket existiert nicht', 'psource-support' ) );
-
-			$reply_args = array();
-
-			$message = isset( $_POST['message-text'] ) ? wpautop( stripslashes_deep( $_POST['message-text'] ) ) : '';
-			if ( empty( $message ) )
-				add_settings_error( 'support_system_submit_reply', 'empty-message', __( 'Nachricht kann nicht leer sein', 'psource-support' ) );
+		$url = $_SERVER['REQUEST_URI'];
+		foreach ( $filters as $key => $value ) {
+			if ( $value === false )
+				$url = remove_query_arg( $key, $url );
 			else
-				$reply_args['message'] = $message;
-
-			$reply_args['poster_id'] = get_current_user_id();
-
-			// Attachments
-			if ( ! empty( $_FILES['support-attachment'] ) ) {
-				$files_uploaded = psource_support_upload_ticket_attachments( $_FILES['support-attachment'] );					
-
-				if ( ! $files_uploaded['error'] && ! empty( $files_uploaded['result'] ) ) {
-					$reply_args['attachments'] = wp_list_pluck( $files_uploaded['result'], 'url' );
-				}
-				elseif ( $files_uploaded['error'] && ! empty( $files_uploaded['result'] ) ) {
-					foreach ( $files_uploaded['result'] as $error ) {
-						add_settings_error( 'support_system_submit_reply', 'file_upload_error', $error );			
-					}
-				}
-			}
-
-
-			if ( ! get_settings_errors( 'support_system_submit_reply' ) ) {
-				$ticket_args = array();
-				if ( isset( $_POST['category'] ) ) {
-					$category = psource_support_get_ticket_category( absint( $_POST['category'] ) );
-					if ( $category )
-						$ticket_args['cat_id'] = $category->cat_id;
-				}
-
-				if ( isset( $_POST['ticket-priority'] ) ) {
-					$possible_values = array_keys( $plugin::$ticket_priority );
-					if ( in_array( absint( $_POST['ticket-priority'] ), $possible_values ) )
-						$ticket_args['ticket_priority'] = absint( $_POST['ticket-priority'] );
-				}
-
-
-				$responsibility = isset( $_POST['responsibility'] ) ? $_POST['responsibility'] : 'accept';
-				if ( in_array( $responsibility, $plugin::$responsibilities ) ) {
-					switch ( $responsibility ) {
-						case 'punt': { $ticket_args['admin_id'] = 0; break; }
-						case 'accept': { $ticket_args['admin_id'] = get_current_user_id(); break; }
-						default: { break; }
-					}
-				}
-
-
-				// Order is important on this
-				if ( psource_support_current_user_can( 'update_ticket' ) ) {
-					psource_support_update_ticket( $ticket->ticket_id, $ticket_args );
-				}
-
-				if ( psource_support_current_user_can( 'insert_reply' ) ) {
-					psource_support_insert_ticket_reply( $ticket->ticket_id, $reply_args );
-				}
-
-				$ticket = psource_support_get_ticket( $ticket->ticket_id );
-
-				if ( $ticket->admin_id && $ticket->admin_id === get_current_user_id() && $ticket->user_id != $ticket->admin_id ) {
-					$status = 2;
-				}
-				elseif ( ! $ticket->admin_id && $ticket->user_id === get_current_user_id() && $ticket->ticket_status != 0 ) {
-					$status = 1;
-				}
-				elseif ( ! $ticket->admin_id && $ticket->user_id === get_current_user_id() && $ticket->ticket_status == 0 ) {
-					$status = 0;
-				}
-				elseif ( $ticket->admin_id && $ticket->user_id === get_current_user_id() && $ticket->user_id != $ticket->admin_id ) {
-					$status = 3;
-				}
-				elseif ( $ticket->admin_id && $ticket->admin_id === get_current_user_id() ) {
-					$status = 1;
-				}
-				else {
-					$status = $ticket->ticket_status;
-				}
-
-				
-				if ( isset( $_POST['closeticket'] ) && psource_support_current_user_can( 'close_ticket', $ticket->ticket_id ) )
-					psource_support_close_ticket( $ticket->ticket_id );
-				elseif ( psource_support_current_user_can( 'open_ticket', $ticket->ticket_id ) )
-					psource_support_ticket_transition_status( $ticket->ticket_id, $status );
-
-
-				// Redirecting to ticket history
-				$link = add_query_arg( 'updated', 'true' );
-				wp_redirect( $link );
-				exit();
-
-			}
-		
-
+				$url = add_query_arg( $key, $value, $url );
 		}
 
-		// Are we creating a FAQ based on a response?
-		if ( isset( $_REQUEST['action'] ) && $_REQUEST['action'] === 'create-faq-from-ticket' && isset( $_REQUEST['tid'] ) && isset( $_REQUEST['rid'] ) ) {
-			$ticket_id = absint( $_REQUEST['tid'] );
-			$reply_id = absint( $_REQUEST['rid'] );
+		wp_redirect( $url );
+		exit();
+	}
 
-			check_admin_referer( 'create-faq-from-ticket-' . $ticket_id . '-' . $reply_id );
+	protected function maybe_handle_ticket_update() {
+		if ( empty( $_POST['submit-ticket-details'] ) ) {
+			return;
+		}
 
-			if ( ! psource_support_current_user_can( 'insert_faq' ) )
-				return;
+		$ticket_id = absint( $_POST['ticket_id'] );
+		check_admin_referer( 'update-ticket-details-' . $ticket_id );
 
-			$ticket = psource_support_get_ticket( $ticket_id );
-			if ( ! $ticket )
-				return;
+		$ticket = psource_support_get_ticket( $ticket_id );
+		if ( ! $ticket )
+			wp_die( __( 'Das Ticket existiert nicht', 'psource-support' ) );
 
-			$reply = psource_support_get_ticket_reply( $reply_id );
-			if ( ! $reply )
-				return;
+		$args = array();
 
-			if ( is_multisite() ) {
-				$redirect_to = add_query_arg(
-					'page',
-					'support-faq-manager',
-					trailingslashit( network_admin_url() ) . '/admin.php'
-				);
+		if ( isset( $_POST['super-admins'] ) ) {
+			$admin_id = psource_support_get_valid_ticket_admin_id( wp_unslash( $_POST['super-admins'] ) );
+			if ( $admin_id !== false ) {
+				$args['admin_id'] = $admin_id;
 			}
-			else {
-				$redirect_to = add_query_arg(
-					'page',
-					'support-faq-manager',
-					trailingslashit( admin_url() ) . '/admin.php'
-				);
-			}
+		}
 
+		if ( isset( $_POST['ticket-priority'] ) ) {
+			$priority = psource_support_get_valid_ticket_priority( $_POST['ticket-priority'] );
+			if ( $priority !== false ) {
+				$args['ticket_priority'] = $priority;
+			}
+		}
+
+		if ( isset( $_POST['ticket-cat'] ) ) {
+			$category_id = psource_support_get_valid_ticket_category_id( $_POST['ticket-cat'] );
+			if ( $category_id ) {
+				$args['cat_id'] = $category_id;
+			}
+		}
+
+		if ( isset( $_POST['close-ticket'] ) && psource_support_current_user_can( 'close_ticket', $ticket_id ) ) {
+			psource_support_close_ticket( $ticket_id );
+		} elseif ( psource_support_current_user_can( 'open_ticket', $ticket_id ) && $ticket->is_closed() ) {
+			psource_support_restore_ticket_previous_status( $ticket_id );
+		}
+
+		if ( psource_support_current_user_can( 'update_ticket' ) ) {
+			psource_support_update_ticket( $ticket_id, $args );
+		}
+
+		$redirect = add_query_arg( 'updated', 'true' );
+		wp_redirect( $redirect );
+		exit();
+	}
+
+	protected function maybe_handle_ticket_reply() {
+		if ( ! isset( $_POST['submit-ticket-reply'] ) ) {
+			return;
+		}
+
+		$ticket_id = absint( $_POST['ticket_id'] );
+		check_admin_referer( 'add-ticket-reply-' . $ticket_id );
+
+		$plugin = psource_support();
+		$ticket = psource_support_get_ticket( $ticket_id );
+		if ( ! $ticket )
+			wp_die( __( 'Das Ticket existiert nicht', 'psource-support' ) );
+
+		$reply_args = array(
+			'poster_id' => get_current_user_id(),
+		);
+
+		$message = isset( $_POST['message-text'] ) ? wpautop( stripslashes_deep( $_POST['message-text'] ) ) : '';
+		if ( empty( $message ) ) {
+			add_settings_error( 'support_system_submit_reply', 'empty-message', __( 'Nachricht kann nicht leer sein', 'psource-support' ) );
+		} else {
+			$reply_args['message'] = $message;
+		}
+
+		$attachments = psource_support_get_uploaded_attachment_urls( isset( $_FILES['support-attachment'] ) ? $_FILES['support-attachment'] : array() );
+		if ( is_wp_error( $attachments ) ) {
+			foreach ( $attachments->get_error_messages() as $message ) {
+				add_settings_error( 'support_system_submit_reply', 'file_upload_error', $message );
+			}
+		} elseif ( ! empty( $attachments ) ) {
+			$reply_args['attachments'] = $attachments;
+		}
+
+		if ( get_settings_errors( 'support_system_submit_reply' ) ) {
+			return;
+		}
+
+		$ticket_args = array();
+		if ( isset( $_POST['category'] ) ) {
+			$category_id = psource_support_get_valid_ticket_category_id( $_POST['category'] );
+			if ( $category_id ) {
+				$ticket_args['cat_id'] = $category_id;
+			}
+		}
+
+		if ( isset( $_POST['ticket-priority'] ) ) {
+			$priority = psource_support_get_valid_ticket_priority( $_POST['ticket-priority'] );
+			if ( $priority !== false ) {
+				$ticket_args['ticket_priority'] = $priority;
+			}
+		}
+
+		$responsibility = isset( $_POST['responsibility'] ) ? $_POST['responsibility'] : 'accept';
+		if ( in_array( $responsibility, $plugin::$responsibilities ) ) {
+			switch ( $responsibility ) {
+				case 'punt':
+					$ticket_args['admin_id'] = 0;
+					break;
+				case 'accept':
+					$ticket_args['admin_id'] = get_current_user_id();
+					break;
+			}
+		}
+
+		if ( psource_support_current_user_can( 'update_ticket' ) ) {
+			psource_support_update_ticket( $ticket->ticket_id, $ticket_args );
+		}
+
+		if ( psource_support_current_user_can( 'insert_reply' ) ) {
+			psource_support_insert_ticket_reply( $ticket->ticket_id, $reply_args );
+		}
+
+		$ticket = psource_support_get_ticket( $ticket->ticket_id );
+		$status = psource_support_get_ticket_status_after_reply( $ticket, get_current_user_id() );
+
+		if ( isset( $_POST['closeticket'] ) && psource_support_current_user_can( 'close_ticket', $ticket->ticket_id ) )
+			psource_support_close_ticket( $ticket->ticket_id );
+		elseif ( psource_support_current_user_can( 'open_ticket', $ticket->ticket_id ) )
+			psource_support_ticket_transition_status( $ticket->ticket_id, $status );
+
+		$link = add_query_arg( 'updated', 'true' );
+		wp_redirect( $link );
+		exit();
+	}
+
+	protected function maybe_redirect_to_faq_creation() {
+		if ( ! isset( $_REQUEST['action'] ) || $_REQUEST['action'] !== 'create-faq-from-ticket' || ! isset( $_REQUEST['tid'] ) || ! isset( $_REQUEST['rid'] ) ) {
+			return;
+		}
+
+		$ticket_id = absint( $_REQUEST['tid'] );
+		$reply_id = absint( $_REQUEST['rid'] );
+
+		check_admin_referer( 'create-faq-from-ticket-' . $ticket_id . '-' . $reply_id );
+
+		if ( ! psource_support_current_user_can( 'insert_faq' ) )
+			return;
+
+		$ticket = psource_support_get_ticket( $ticket_id );
+		if ( ! $ticket )
+			return;
+
+		$reply = psource_support_get_ticket_reply( $reply_id );
+		if ( ! $reply )
+			return;
+
+		if ( is_multisite() ) {
 			$redirect_to = add_query_arg(
-				array(
-					'action' => 'add',
-					'tid' => $ticket_id,
-					'rid' => $reply_id
-				),
-				$redirect_to
+				'page',
+				'support-faq-manager',
+				trailingslashit( network_admin_url() ) . '/admin.php'
 			);
-
-			wp_redirect( $redirect_to );
-			exit;
-			
+		} else {
+			$redirect_to = add_query_arg(
+				'page',
+				'support-faq-manager',
+				trailingslashit( admin_url() ) . '/admin.php'
+			);
 		}
+
+		$redirect_to = add_query_arg(
+			array(
+				'action' => 'add',
+				'tid' => $ticket_id,
+				'rid' => $reply_id
+			),
+			$redirect_to
+		);
+
+		wp_redirect( $redirect_to );
+		exit;
 	}
 
 	protected function render_inner_page_details() {

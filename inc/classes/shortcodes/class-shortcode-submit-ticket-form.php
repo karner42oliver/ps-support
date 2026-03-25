@@ -10,74 +10,84 @@ class PSource_Support_Submit_Ticket_Form_Shortcode extends PSource_Support_Short
 	}
 
 	public function process_form() {
-		if ( isset( $_POST['support-system-submit-ticket'] ) && psource_support_current_user_can( 'insert_ticket' ) ) {
-
-			$user_id = get_current_user_id();
-			$blog_id = get_current_blog_id();
-
-			$action = 'support-system-submit-ticket-' . $user_id . '-' . $blog_id;
-			if ( ! wp_verify_nonce( $_POST['_wpnonce'], $action ) )
-				wp_die( __( 'Sicherheitsüberprüfungsfehler', 'psource-support' ) );
-
-			$subject = $_POST['support-system-ticket-subject'];
-			if ( empty( $subject ) )
-				wp_die( __( 'Bitte gib einen Betreff für das Ticket ein', 'psource-support' ) );
-
-			$message = $_POST['support-system-ticket-message'];
-			if ( empty( $message ) )
-				wp_die( __( 'Bitte füge eine Nachricht für das Ticket ein', 'psource-support' ) );
-
-			if ( isset(  $_POST['support-system-ticket-priority'] ) )
-				$priority = absint( $_POST['support-system-ticket-priority'] );
-			else
-				$priority = 0;
-
-			$args = array(
-				'title' => $subject,
-				'message' => $message,
-				'ticket_priority' => $priority
-			);
-
-			if ( ! empty( $_FILES['support-attachment'] ) ) {
-				$files_uploaded = psource_support_upload_ticket_attachments( $_FILES['support-attachment'] );					
-
-				if ( ! $files_uploaded['error'] && ! empty( $files_uploaded['result'] ) ) {
-					$args['attachments'] = wp_list_pluck( $files_uploaded['result'], 'url' );
-				}
-				elseif ( $files_uploaded['error'] && ! empty( $files_uploaded['result'] ) ) {
-					$error_message = '<ul>';
-					foreach ( $files_uploaded['result'] as $error ) {
-						$error_message .= '<li>' . $error . '</li>';			
-					}
-					$error_message .= '</ul>';
-					wp_die( $error_message );
-				}
-			}
-
-			if ( isset( $_POST['support-system-ticket-category'] ) && absint( $_POST['support-system-ticket-category'] ) ) {
-				$args['cat_id'] = absint( $_POST['support-system-ticket-category'] );
-			}
-
-			$args['blog_id'] = $blog_id;
-			if ( ! empty( $_POST['support-system-ticket-blog'] ) ) {
-				$blog_id = absint( $_POST['support-system-ticket-blog'] );
-				$list = wp_list_pluck( get_blogs_of_user( $user_id ), 'userblog_id' );
-				if ( in_array( $blog_id, $list ) )
-					$args['blog_id'] = $blog_id;
-			}
-
-			$ticket_id = psource_support_insert_ticket( $args );
-
-			if ( is_wp_error( $ticket_id ) )
-				wp_die( $ticket_id->get_error_message() );
-
-			$redirect_to = psource_support_get_support_page_url();
-			if ( $redirect_to ) {
-				wp_redirect( add_query_arg( 'tid', $ticket_id, $redirect_to ) );
-				exit;
-			}
-
+		if ( ! isset( $_POST['support-system-submit-ticket'] ) || ! psource_support_current_user_can( 'insert_ticket' ) ) {
+			return;
 		}
+
+		$user_id = get_current_user_id();
+		$blog_id = get_current_blog_id();
+
+		$action = 'support-system-submit-ticket-' . $user_id . '-' . $blog_id;
+		if ( ! wp_verify_nonce( $_POST['_wpnonce'], $action ) )
+			wp_die( __( 'Sicherheitsüberprüfungsfehler', 'psource-support' ) );
+
+		$args = $this->get_ticket_args_from_request( $user_id, $blog_id );
+		$ticket_id = psource_support_insert_ticket( $args );
+
+		if ( is_wp_error( $ticket_id ) )
+			wp_die( $ticket_id->get_error_message() );
+
+		$redirect_to = psource_support_get_support_page_url();
+		if ( $redirect_to ) {
+			wp_redirect( add_query_arg( 'tid', $ticket_id, $redirect_to ) );
+			exit;
+		}
+	}
+
+	protected function get_ticket_args_from_request( $user_id, $blog_id ) {
+		$subject = isset( $_POST['support-system-ticket-subject'] ) ? sanitize_text_field( wp_unslash( $_POST['support-system-ticket-subject'] ) ) : '';
+		if ( empty( $subject ) )
+			wp_die( __( 'Bitte gib einen Betreff für das Ticket ein', 'psource-support' ) );
+
+		$message = isset( $_POST['support-system-ticket-message'] ) ? wp_kses_post( wp_unslash( $_POST['support-system-ticket-message'] ) ) : '';
+		if ( empty( $message ) )
+			wp_die( __( 'Bitte füge eine Nachricht für das Ticket ein', 'psource-support' ) );
+
+		$priority = isset( $_POST['support-system-ticket-priority'] ) ? psource_support_get_valid_ticket_priority( $_POST['support-system-ticket-priority'] ) : false;
+
+		$args = array(
+			'title' => $subject,
+			'message' => $message,
+			'ticket_priority' => $priority !== false ? $priority : 0,
+			'blog_id' => $this->get_selected_blog_id( $user_id, $blog_id ),
+		);
+
+		$attachments = psource_support_get_uploaded_attachment_urls( isset( $_FILES['support-attachment'] ) ? $_FILES['support-attachment'] : array() );
+		if ( is_wp_error( $attachments ) ) {
+			$error_message = '<ul>';
+			foreach ( $attachments->get_error_messages() as $message ) {
+				$error_message .= '<li>' . $message . '</li>';
+			}
+			$error_message .= '</ul>';
+			wp_die( $error_message );
+		}
+
+		if ( ! empty( $attachments ) ) {
+			$args['attachments'] = $attachments;
+		}
+
+		if ( isset( $_POST['support-system-ticket-category'] ) ) {
+			$category_id = psource_support_get_valid_ticket_category_id( $_POST['support-system-ticket-category'] );
+			if ( $category_id ) {
+				$args['cat_id'] = $category_id;
+			}
+		}
+
+		return $args;
+	}
+
+	protected function get_selected_blog_id( $user_id, $default_blog_id ) {
+		if ( empty( $_POST['support-system-ticket-blog'] ) ) {
+			return $default_blog_id;
+		}
+
+		$blog_id = absint( $_POST['support-system-ticket-blog'] );
+		$list = wp_list_pluck( get_blogs_of_user( $user_id ), 'userblog_id' );
+		if ( in_array( $blog_id, $list ) ) {
+			return $blog_id;
+		}
+
+		return $default_blog_id;
 	}
 
 	public function render( $atts ) {

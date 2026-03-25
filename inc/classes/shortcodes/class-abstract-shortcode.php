@@ -9,6 +9,10 @@ abstract class PSource_Support_Shortcode {
 	}
 
 	public function start() {
+		if ( function_exists( 'psource_support' ) && psource_support()->shortcodes ) {
+			psource_support()->shortcodes->enqueue_scripts();
+		}
+
 		echo '<div id="support-system">';
 		ob_start();
 	}

@@ -34,18 +34,3 @@
 
 	</p>
 </form>
-
-<script>
-	jQuery(document).ready(function($) {
-		$('.wrap').support_system({
-			attachments: {
-				container_selector: '.support-attachments',
-				button_text: " <?php _e( 'Dateien hinzufügen...', 'psource-support' ); ?>",
-				button_class: 'button-secondary',
-				remove_file_title: "<?php esc_attr_e( 'Datei löschen', 'psource-support' ); ?>",
-				remove_link_class: "button-secondary",
-				remove_link_text: " <?php _e( 'Datei löschen', 'psource-support' ); ?>",
-			}
-		});
-	});
-</script>

@@ -2,11 +2,3 @@
 	<?php include( 'ticket-status-links.php' ); ?>
 	<?php include( 'tickets-table-form.php' ); ?>
 </div>
-
-<script>
-	jQuery(document).ready(function($) {
-    	$('span.delete > a').on('click', function(e) {
-        	return confirm('<?php _e("Möchtest Du dieses Ticket wirklich löschen?", 'psource-support'); ?>');
-    	});
-	});
-</script>

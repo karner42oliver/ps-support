@@ -52,6 +52,24 @@ function psource_support_get_ticket_reply( $ticket_reply ) {
 	return $ticket_reply;
 }
 
+function psource_support_get_uploaded_attachment_urls( $files ) {
+	if ( empty( $files ) ) {
+		return array();
+	}
+
+	$files_uploaded = psource_support_upload_ticket_attachments( $files );
+	if ( ! $files_uploaded['error'] ) {
+		return ! empty( $files_uploaded['result'] ) ? wp_list_pluck( $files_uploaded['result'], 'url' ) : array();
+	}
+
+	$error = new WP_Error();
+	foreach ( $files_uploaded['result'] as $message ) {
+		$error->add( 'file_upload_error', $message );
+	}
+
+	return $error;
+}
+
 /**
  * Insert a new reply for a ticket
  * 

@@ -288,6 +288,26 @@ function psource_support_register_main_script() {
 	wp_localize_script( 'support-system', 'support_system_strings', $l10n );
 }
 
+function psource_support_register_admin_script() {
+	wp_register_script( 'support-system-admin', PSOURCE_SUPPORT_PLUGIN_URL . 'admin/assets/js/support-admin.js', array( 'jquery' ), psource_support_get_version(), true );
+
+	$l10n = array(
+		'attachmentButtonText' => __( 'Dateien hinzufügen...', 'psource-support' ),
+		'attachmentRemoveTitle' => __( 'Datei löschen', 'psource-support' ),
+		'attachmentRemoveText' => __( 'Datei löschen', 'psource-support' ),
+		'deleteConfirm' => __( 'Möchtest Du dieses Ticket wirklich löschen?', 'psource-support' ),
+	);
+
+	wp_localize_script( 'support-system-admin', 'support_system_admin_i18n', $l10n );
+}
+
+function psource_support_enqueue_admin_script() {
+	if ( ! wp_script_is( 'support-system-admin', 'registered' ) )
+		psource_support_register_admin_script();
+
+	wp_enqueue_script( 'support-system-admin' );
+}
+
 function psource_support_enqueue_main_script() {
 	if ( ! wp_script_is( 'support-system', 'registered' ) )
 		psource_support_register_main_script();

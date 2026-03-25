@@ -56,32 +56,3 @@
         </div>
     <?php endforeach; ?>
 </div>
-
-<script>
-	jQuery(document).ready(function($) {
-        $('.wrap').support_system();
-    });
-</script>
-<style>
-    .support-system-spinner {
-        float: none;
-    }
-	.accordion ul li {
-        list-style: disc;
-        margin-left: 25px;
-    }
-
-    #faq-categories .faq-categories-column {
-        width: 32%;
-        min-width: 200px;
-        float: left;
-    }
-
-    .faq-question-title {
-        cursor: pointer;
-        background: none;
-        font-size: 15px;
-        font-weight: normal;
-        margin-left: 15px;
-    }
-</style>

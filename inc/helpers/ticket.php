@@ -39,6 +39,76 @@ function psource_support_get_ticket_status_name( $status_id ) {
 	return MU_Support_System::$ticket_status[ $status_id ];
 }
 
+function psource_support_get_valid_ticket_priority( $priority ) {
+	$priority = absint( $priority );
+	$possible_values = array_keys( psource_support()::$ticket_priority );
+
+	if ( in_array( $priority, $possible_values ) ) {
+		return $priority;
+	}
+
+	return false;
+}
+
+function psource_support_get_valid_ticket_category_id( $category_id ) {
+	$category_id = absint( $category_id );
+
+	if ( ! $category_id ) {
+		return false;
+	}
+
+	$category = psource_support_get_ticket_category( $category_id );
+	if ( ! $category ) {
+		return false;
+	}
+
+	return $category->cat_id;
+}
+
+function psource_support_get_valid_ticket_admin_id( $staff_name ) {
+	if ( $staff_name === '' || $staff_name === null ) {
+		return 0;
+	}
+
+	$possible_users = MU_Support_System::get_super_admins();
+	if ( ! in_array( $staff_name, $possible_users ) ) {
+		return false;
+	}
+
+	$user = get_user_by( 'login', $staff_name );
+	if ( ! $user ) {
+		return false;
+	}
+
+	return (int) $user->data->ID;
+}
+
+function psource_support_get_ticket_status_after_reply( $ticket, $poster_id ) {
+	$poster_id = absint( $poster_id );
+
+	if ( $ticket->admin_id && $ticket->admin_id === $poster_id && $ticket->user_id != $ticket->admin_id ) {
+		return 2;
+	}
+
+	if ( ! $ticket->admin_id && $ticket->user_id === $poster_id && $ticket->ticket_status != 0 ) {
+		return 1;
+	}
+
+	if ( ! $ticket->admin_id && $ticket->user_id === $poster_id && $ticket->ticket_status == 0 ) {
+		return 0;
+	}
+
+	if ( $ticket->admin_id && $ticket->user_id === $poster_id && $ticket->user_id != $ticket->admin_id ) {
+		return 3;
+	}
+
+	if ( $ticket->admin_id && $ticket->admin_id === $poster_id ) {
+		return 1;
+	}
+
+	return $ticket->ticket_status;
+}
+
 /**
  * Get the ticket Priority string name
  * 

@@ -25,8 +25,6 @@ class PSource_Support_Shortcodes {
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_scripts' ) );
 		add_action( 'wp_enqueue_scripts', array( &$this, 'register_styles' ) );
 
-		add_action( 'wp_footer', array( &$this, 'enqueue_scripts' ) );
-
 		add_action( 'admin_bar_menu', array( &$this, 'set_admin_bar_fields' ), 300 );
 	}
 
@@ -87,6 +85,7 @@ class PSource_Support_Shortcodes {
 
 	public function enqueue_scripts() {
 		if ( is_support_system() ) {
+			psource_support_enqueue_main_script();
 			wp_enqueue_script( 'support-system-init' );
 			wp_enqueue_style( 'support-system' );
 			wp_enqueue_style( 'support-system-adminbar' );
