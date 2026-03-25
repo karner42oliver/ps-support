@@ -40,8 +40,8 @@ class PSource_Support_Admin_FAQ_Menu extends PSource_Support_Admin_Menu {
 	}
 
 	public function set_filters() {
-		add_action( 'admin_enqueue_scripts', array( &$this, 'enqueue_scripts' ) );
-		add_action( 'admin_enqueue_scripts', array( &$this, 'enqueue_styles' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
 	}
 
 	public function enqueue_scripts( $hook ) {

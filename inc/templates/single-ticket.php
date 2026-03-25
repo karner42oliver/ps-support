@@ -5,7 +5,7 @@
 				<h1 class="text-center support-system-ticket-title"><?php echo psource_support_get_the_ticket_title(); ?></h1>
 
 				<?php if ( psource_support_is_ticket_closed( psource_support_get_the_ticket_id() ) ): ?>
-					<div data-alert class="alert-box alert">
+					<div class="alert-box alert">
 						<?php _e( 'Dieses Ticket ist geschlossen', 'psource-support' ); ?>
 					</div>
 				<?php endif; ?>

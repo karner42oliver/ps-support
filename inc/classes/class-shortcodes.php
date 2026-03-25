@@ -23,9 +23,9 @@ class PSource_Support_Shortcodes {
 		) );
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_scripts' ) );
-		add_action( 'wp_enqueue_scripts', array( &$this, 'register_styles' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'register_styles' ) );
 
-		add_action( 'admin_bar_menu', array( &$this, 'set_admin_bar_fields' ), 300 );
+		add_action( 'admin_bar_menu', array( $this, 'set_admin_bar_fields' ), 300 );
 	}
 
 	public function set_admin_bar_fields( $wp_admin_bar ) {

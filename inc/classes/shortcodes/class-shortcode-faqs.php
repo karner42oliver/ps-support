@@ -27,13 +27,7 @@ class PSource_Support_FAQs_Shortcode extends PSource_Support_Shortcode {
 
 		psource_support_get_template( 'index', 'faqs' );
 
-		add_action( 'wp_footer', array( &$this, 'enqueue_custom_scripts' ) );
-
 		return $this->end();
 	}
 
-	public function enqueue_custom_scripts() {
-		psource_support_enqueue_foundation_scripts();
-		wp_enqueue_script( 'support-system-foundation-init', PSOURCE_SUPPORT_PLUGIN_URL . 'assets/js/foundation-init.js', array( 'support-system-foundation-js' ), psource_support_get_version(), true );
-	}
 }

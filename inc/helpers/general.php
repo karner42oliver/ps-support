@@ -328,11 +328,7 @@ function psource_support_enqueue_main_script() {
 }
 
 function psource_support_enqueue_foundation_scripts( $in_footer = true ) {
-	$suffix = '.min';
-	if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG )
-		$suffix = '';
-
-	wp_enqueue_script( 'support-system-foundation-js', PSOURCE_SUPPORT_PLUGIN_URL . 'assets/js/foundation' . $suffix . '.js', array( 'jquery' ), psource_support_get_version(), $in_footer );
+	psource_support_enqueue_main_script();
 }
 
 

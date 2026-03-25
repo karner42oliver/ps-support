@@ -2,7 +2,7 @@
 
 class PSource_Support_Admin_Ajax {
 	public function __construct() {
-		add_action( 'wp_ajax_vote_faq_question', array( &$this, 'vote_faq_question' ) );
+		add_action( 'wp_ajax_vote_faq_question', array( $this, 'vote_faq_question' ) );
 	}
 
 	/**

@@ -1,5 +1,6 @@
 jQuery(function($) {
     $('#support-system').support_system({
+        accordion: {},
         attachments: {
             container_selector: '.support-system-attachments',
             button_text: support_system_i18n.button_text,

@@ -42,10 +42,10 @@ if ( ! class_exists( 'MU_Support_Menu' ) ) {
 			$this->is_network = $network;
 			if ( ! $just_object ) {
 				if ( $network ) {
-					add_action( 'network_admin_menu', array( &$this, 'add_menu' ) );
+					add_action( 'network_admin_menu', array( $this, 'add_menu' ) );
 				}
 				else {
-					add_action( 'admin_menu', array( &$this, 'add_menu' ) );
+					add_action( 'admin_menu', array( $this, 'add_menu' ) );
 				}
 			}
 		}
@@ -68,7 +68,7 @@ if ( ! class_exists( 'MU_Support_Menu' ) ) {
 					$menu_title, 
 					$this->capability, 
 					$this->menu_slug, 
-					array( &$this, 'render_page' ), 
+					array( $this, 'render_page' ), 
 					$this->icon_url, 
 					$this->position
 				);
@@ -80,7 +80,7 @@ if ( ! class_exists( 'MU_Support_Menu' ) ) {
 					$this->menu_title, 
 					$this->capability, 
 					$this->menu_slug, 
-					array( &$this, 'render_page' )
+					array( $this, 'render_page' )
 				);
 			}
 

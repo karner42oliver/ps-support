@@ -319,10 +319,6 @@ function psource_support_delete_faq_category( $faq_category_id ) {
 }
 
 function psource_support_count_faqs_on_category( $faq_category_id ) {
-	global $wpdb;
-
-	$faqs_table = psource_support()->model->faq_table;
-
 	$faq_category = psource_support_get_faq_category( $faq_category_id );
 	if ( ! $faq_category )
 		return false;

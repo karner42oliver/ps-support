@@ -252,3 +252,30 @@
 	};
 }(jQuery, window, window.document));
 
+;(function ($, window, document, undefined) {
+	Support_System.libs.accordion = {
+		name: 'Support System Accordion',
+		version: '2.0',
+		init: function() {
+			$('[data-accordion]').each(function() {
+				var $accordion = $(this);
+				$accordion.find('.accordion-navigation > a').on('click', function(e) {
+					e.preventDefault();
+					var $nav    = $(this).closest('.accordion-navigation');
+					var target  = $(this).attr('href');
+					var $panel  = target ? $accordion.find(target) : $nav.find('.content');
+					var isOpen  = $nav.hasClass('active');
+
+					$accordion.find('.accordion-navigation.active').removeClass('active')
+						.find('.content').slideUp(200);
+
+					if ( ! isOpen ) {
+						$nav.addClass('active');
+						$panel.slideDown(200);
+					}
+				});
+			});
+		}
+	};
+}(jQuery, window, window.document));
+

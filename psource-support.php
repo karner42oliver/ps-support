@@ -101,16 +101,16 @@ if ( ! class_exists( 'MU_Support_System') ) {
 			$this->includes();
 
 			// Initializes plugin
-			add_action( 'init', array( &$this, 'init_plugin' ), 1 );
+			add_action( 'init', array( $this, 'init_plugin' ), 1 );
 
 			// Activation/Upgrades
-			register_activation_hook( __FILE__, array( &$this, 'activate' ) );
-			register_deactivation_hook( __FILE__, array( &$this, 'deactivate' ) );
+			register_activation_hook( __FILE__, array( $this, 'activate' ) );
+			register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
 
 			// Is this an upgrade?
 			add_action( 'init', 'psource_support_check_for_upgrades' );
 
-			add_action( 'plugins_loaded', array( &$this, 'load_text_domain' ), 100 );
+			add_action( 'plugins_loaded', array( $this, 'load_text_domain' ), 100 );
 
 			// Create Admin menus
 			//add_action( 'init', array( &$this, 'admin_menus' ) );

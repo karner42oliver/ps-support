@@ -497,7 +497,7 @@ function psource_support_update_ticket( $ticket_id, $args ) {
  * @return mixed the new ticket ID, WP_Error otherwise
  */
 function psource_support_insert_ticket( $args = array() ) {
-	global $wpdb, $current_site;
+	global $current_site;
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
 
@@ -652,10 +652,6 @@ function psource_support_insert_ticket( $args = array() ) {
  * @param  int $ticket_id
  */
 function psource_support_recount_ticket_replies( $ticket_id ) {
-	global $wpdb;
-	
-	$table = psource_support()->model->tickets_table;
-	
 	$ticket = psource_support_get_ticket( $ticket_id );
 
 	if ( ! $ticket )
