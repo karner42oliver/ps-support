@@ -202,7 +202,9 @@ function psource_support_the_search_input( $args = array() ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$class       = $args['class'];
+	$placeholder = $args['placeholder'];
+	$type        = $args['type'];
 
 	$search = '';
 
@@ -245,7 +247,16 @@ function psource_support_paginate_links( $args = '' ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$ul_class          = $args['ul_class'];
+	$disabled_class    = $args['disabled_class'];
+	$arrow_class       = $args['arrow_class'];
+	$current_class     = $args['current_class'];
+	$prev_text         = $args['prev_text'];
+	$next_text         = $args['next_text'];
+	$end_size          = $args['end_size'];
+	$mid_size          = $args['mid_size'];
+	$before_page_number = $args['before_page_number'];
+	$after_page_number  = $args['after_page_number'];
 
 	// Who knows what else people pass in $args
 	$total = (int) $total;
@@ -321,7 +332,9 @@ function psource_support_the_ticket_badges( $args = array() ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$badge_base_class    = $args['badge_base_class'];
+	$replies_badge_class = $args['replies_badge_class'];
+	$status_badge_class  = $args['status_badge_class'];
 
 	$badges = array();
 
@@ -372,7 +385,11 @@ function psource_support_user_sites_dropdown( $args = array() ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$name     = $args['name'];
+	$id       = $args['id'];
+	$echo     = $args['echo'];
+	$user_id  = $args['user_id'];
+	$selected = $args['selected'];
 
 	if ( ! $id )
 		$id = $name;
@@ -417,7 +434,8 @@ function psource_support_widget( $widget_args, $callback, $callback_args = array
 	);
 
 	$widget_args = wp_parse_args( $widget_args, $defaults );
-	extract( $widget_args );
+	$title = $widget_args['title'];
+	$class = $widget_args['class'];
 
 	$class .= ' support-system-widget';
 	ob_start();
@@ -443,8 +461,8 @@ function psource_support_the_staff_box( $args = array() ) {
 		'submit_class' => 'button'
 	);
 	$args = wp_parse_args( $args, $defaults );
-
-	extract( $args );
+	$class        = $args['class'];
+	$submit_class = $args['submit_class'];
 
 	?>		
 		<form action="" method="post">
@@ -499,8 +517,8 @@ function psource_support_the_open_close_box( $args = array() ) {
 		'submit_class' => 'button'
 	);
 	$args = wp_parse_args( $args, $defaults );
-
-	extract( $args );
+	$class        = $args['class'];
+	$submit_class = $args['submit_class'];
 
 	$ticket = psource_support()->query->ticket;
 

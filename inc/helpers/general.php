@@ -39,8 +39,11 @@ function psource_support_priority_dropdown( $args = array() ) {
 		'echo' => true
 	);
 	$args = wp_parse_args( $args, $defaults );
-
-	extract( $args );
+	$name       = $args['name'];
+	$id         = $args['id'];
+	$show_empty = $args['show_empty'];
+	$selected   = $args['selected'];
+	$echo       = $args['echo'];
 
 	if ( ! $id )
 		$id = $name;
@@ -81,7 +84,12 @@ function psource_support_super_admins_dropdown( $args = array() ) {
 	$plugin = psource_support();
 	$super_admins = MU_Support_System::get_super_admins();
 
-	extract( $args );
+	$name       = $args['name'];
+	$id         = $args['id'];
+	$show_empty = $args['show_empty'];
+	$selected   = $args['selected'];
+	$echo       = $args['echo'];
+	$value      = $args['value'];
 
 	if ( ! $id )
 		$id = $name;
@@ -115,8 +123,11 @@ function psource_support_assignees_dropdown( $args = array() ) {
 		'echo' => true,
 	);
 	$args = wp_parse_args( $args, $defaults );
-
-	extract( $args );
+	$name       = $args['name'];
+	$id         = $args['id'];
+	$show_empty = $args['show_empty'];
+	$selected   = $args['selected'];
+	$echo       = $args['echo'];
 
 	if ( ! $id ) {
 		$id = $name;

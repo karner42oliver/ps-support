@@ -75,7 +75,12 @@ function psource_support_get_ticket_categories( $args = array() ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$orderby  = $args['orderby'];
+	$order    = $args['order'];
+	$per_page = $args['per_page'];
+	$count    = $args['count'];
+	$page     = $args['page'];
+	$defcat   = $args['defcat'];
 
 	$current_site_id = ! empty ( $current_site ) ? $current_site->id : 1;
 
@@ -134,8 +139,12 @@ function psource_support_ticket_categories_dropdown( $args = array() ) {
 		'echo' => true
 	);
 	$args = wp_parse_args( $args, $defaults );
-
-	extract( $args );
+	$name       = $args['name'];
+	$id         = $args['id'];
+	$show_empty = $args['show_empty'];
+	$selected   = $args['selected'];
+	$class      = $args['class'];
+	$echo       = $args['echo'];
 
 	if ( ! $id )
 		$id = $name;
@@ -203,7 +212,9 @@ function psource_support_update_ticket_category( $ticket_category_id, $args = ar
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$cat_name = $args['cat_name'];
+	$user_id  = $args['user_id'];
+	$defcat   = $args['defcat'];
 
 	$cat_name = trim( $cat_name );
 	if ( empty( $cat_name ) )

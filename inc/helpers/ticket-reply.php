@@ -125,7 +125,13 @@ function psource_support_insert_ticket_reply( $ticket_id, $args = array() ) {
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	extract( $args );
+	$site_id      = $args['site_id'];
+	$poster_id    = $args['poster_id'];
+	$subject      = $args['subject'];
+	$message      = $args['message'];
+	$message_date = $args['message_date'];
+	$attachments  = $args['attachments'];
+	$send_emails  = $args['send_emails'];
 
 	$message = wp_kses_post( wp_unslash( $message ) );
 

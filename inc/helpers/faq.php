@@ -83,8 +83,14 @@ function psource_support_get_faqs( $args = array() ) {
 		'count' => false
 	);
 	$args = wp_parse_args( $args, $defaults );
-
-	extract( $args );
+	$per_page = $args['per_page'];
+	$page     = $args['page'];
+	$category = $args['category'];
+	$site_id  = $args['site_id'];
+	$orderby  = $args['orderby'];
+	$order    = $args['order'];
+	$s        = $args['s'];
+	$count    = $args['count'];
 
 	$where = array();
 	$where[] = "1 = 1";
